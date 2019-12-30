@@ -1,0 +1,26 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Filename,Latency,SampleCount,ErrorCount,Hostname,IdleTime,Connect
+2019/12/30 17:08:04.791,71,天气预报,200,OK,线程组 1-1,text,true,,629,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,70,1,0,zhangyazhou,0,44
+2019/12/30 17:08:04.888,17,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,17,1,0,zhangyazhou,0,6
+2019/12/30 17:08:04.906,23,天气预报,200,OK,线程组 1-1,text,true,,629,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,23,1,0,zhangyazhou,0,7
+2019/12/30 17:08:04.930,15,天气预报,200,OK,线程组 1-1,text,true,,629,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,15,1,0,zhangyazhou,0,8
+2019/12/30 17:08:04.947,13,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,13,1,0,zhangyazhou,0,6
+2019/12/30 17:08:04.962,20,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,16,1,0,zhangyazhou,0,6
+2019/12/30 17:08:04.983,19,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,18,1,0,zhangyazhou,0,8
+2019/12/30 17:08:05.003,13,天气预报,200,OK,线程组 1-1,text,true,,629,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,13,1,0,zhangyazhou,0,6
+2019/12/30 17:08:05.018,18,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,18,1,0,zhangyazhou,0,10
+2019/12/30 17:08:05.037,19,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,17,1,0,zhangyazhou,0,10
+2019/12/30 17:08:05.057,15,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,14,1,0,zhangyazhou,0,6
+2019/12/30 17:08:05.073,17,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,17,1,0,zhangyazhou,0,7
+2019/12/30 17:08:05.092,14,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,14,1,0,zhangyazhou,0,6
+2019/12/30 17:08:05.108,19,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,18,1,0,zhangyazhou,0,8
+2019/12/30 17:08:05.128,15,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,14,1,0,zhangyazhou,0,7
+2019/12/30 17:08:05.145,21,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,21,1,0,zhangyazhou,0,14
+2019/12/30 17:08:05.167,16,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,16,1,0,zhangyazhou,0,7
+2019/12/30 17:08:05.184,28,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,28,1,0,zhangyazhou,0,15
+2019/12/30 17:08:05.213,29,天气预报,200,OK,线程组 1-1,text,true,,629,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,28,1,0,zhangyazhou,0,8
+2019/12/30 17:08:05.243,15,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,13,1,0,zhangyazhou,0,5
+2019/12/30 17:08:05.260,17,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,17,1,0,zhangyazhou,0,7
+2019/12/30 17:08:05.278,18,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,18,1,0,zhangyazhou,0,6
+2019/12/30 17:08:05.297,22,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,22,1,0,zhangyazhou,0,8
+2019/12/30 17:08:05.320,30,天气预报,200,OK,线程组 1-1,text,true,,630,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,30,1,0,zhangyazhou,0,17
+2019/12/30 17:08:05.352,23,天气预报,200,OK,线程组 1-1,text,true,,629,143,1,1,http://www.weather.com.cn/data/sk/101010100.html,,23,1,0,zhangyazhou,0,7
