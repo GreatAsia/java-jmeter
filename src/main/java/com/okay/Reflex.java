@@ -13,6 +13,7 @@ public class Reflex {
 
     /**
      * 获取无参构造函数
+     *
      * @param className
      * @return
      */
@@ -32,6 +33,7 @@ public class Reflex {
 
     /**
      * 获取无参构造方法
+     *
      * @param clazz
      * @return
      */
@@ -83,6 +85,7 @@ public class Reflex {
 
     /**
      * 获取多个参数的构造方法 已知className
+     *
      * @param className
      * @param pareTyples
      * @param pareVaules
@@ -123,6 +126,7 @@ public class Reflex {
 
     /**
      * 获取多个参数的方法
+     *
      * @param obj
      * @param methodName
      * @param pareTyples
@@ -149,6 +153,7 @@ public class Reflex {
 
     /**
      * 获取一个参数的方法
+     *
      * @param obj
      * @param methodName
      * @param pareTyple
@@ -164,6 +169,7 @@ public class Reflex {
 
     /**
      * 获取无参方法
+     *
      * @param obj
      * @param methodName
      * @return
@@ -178,6 +184,7 @@ public class Reflex {
 
     /**
      * 无参静态方法
+     *
      * @param className
      * @param method_name
      * @return
@@ -191,6 +198,7 @@ public class Reflex {
 
     /**
      * 获取一个参数的静态方法
+     *
      * @param className
      * @param method_name
      * @param pareTyple
@@ -206,6 +214,7 @@ public class Reflex {
 
     /**
      * 获取多个参数的静态方法
+     *
      * @param className
      * @param method_name
      * @param pareTyples
@@ -225,6 +234,7 @@ public class Reflex {
 
     /**
      * 无参静态方法
+     *
      * @param method_name
      * @return
      */
@@ -237,6 +247,7 @@ public class Reflex {
 
     /**
      * 一个参数静态方法
+     *
      * @param clazz
      * @param method_name
      * @param classType
@@ -252,6 +263,7 @@ public class Reflex {
 
     /**
      * 多个参数的静态方法
+     *
      * @param clazz
      * @param method_name
      * @param pareTyples
@@ -329,7 +341,6 @@ public class Reflex {
     public static void setStaticFieldObject(Class clazz, String filedName, Object filedVaule) {
         setFieldObject(clazz, null, filedName, filedVaule);
     }
-
 
 
 }

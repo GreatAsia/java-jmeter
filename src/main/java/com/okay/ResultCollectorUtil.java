@@ -1,36 +1,10 @@
 package com.okay;
 
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.RandomAccessFile;
-import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.jmeter.engine.util.NoThreadClone;
 import org.apache.jmeter.gui.GuiPackage;
 import org.apache.jmeter.reporters.AbstractListenerElement;
-import org.apache.jmeter.reporters.ResultCollector;
-import org.apache.jmeter.reporters.ResultCollectorHelper;
-import org.apache.jmeter.reporters.Summariser;
-import org.apache.jmeter.samplers.Clearable;
-import org.apache.jmeter.samplers.Remoteable;
-import org.apache.jmeter.samplers.SampleEvent;
-import org.apache.jmeter.samplers.SampleListener;
-import org.apache.jmeter.samplers.SampleResult;
-import org.apache.jmeter.samplers.SampleSaveConfiguration;
+import org.apache.jmeter.samplers.*;
 import org.apache.jmeter.save.CSVSaveService;
 import org.apache.jmeter.save.SaveService;
 import org.apache.jmeter.services.FileServer;
@@ -40,9 +14,15 @@ import org.apache.jmeter.testelement.property.ObjectProperty;
 import org.apache.jmeter.util.JMeterUtils;
 import org.apache.jmeter.visualizers.Visualizer;
 import org.apache.jorphan.util.JMeterError;
-import org.json.simple.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * @author zhou
@@ -50,6 +30,7 @@ import org.slf4j.LoggerFactory;
  */
 public class ResultCollectorUtil extends AbstractListenerElement implements SampleListener, Clearable, Serializable, TestStateListener, Remoteable, NoThreadClone {
 
+    public static final String FILENAME = "filename";
     private static final Logger log = LoggerFactory.getLogger(ResultCollectorUtil.class);
     private static final long serialVersionUID = 234L;
     private static final String TEST_IS_LOCAL = "*local*";
@@ -59,7 +40,6 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
     private static final String TESTRESULTS_END = "</testResults>";
     private static final String XML_HEADER = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>";
     private static final int MIN_XML_FILE_LEN = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>".length() + "<testResults>".length() + "</testResults>".length();
-    public static final String FILENAME = "filename";
     private static final String SAVE_CONFIG = "saveConfig";
     private static final String ERROR_LOGGING = "ResultCollector.error_logging";
     private static final String SUCCESS_ONLY_LOGGING = "ResultCollector.success_only_logging";
@@ -74,7 +54,7 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
     private volatile SummariserUtils summariser;
 
     public ResultCollectorUtil() {
-        this((SummariserUtils)null);
+        this((SummariserUtils) null);
     }
 
     public ResultCollectorUtil(SummariserUtils summer) {
@@ -85,10 +65,178 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
         this.setProperty(new ObjectProperty("saveConfig", new SampleSaveConfiguration()));
         this.summariser = summer;
     }
-     @Override
+
+    public static boolean isSampleWanted(boolean success, boolean errorOnly, boolean successOnly) {
+        return !errorOnly && !successOnly || success && successOnly || !success && errorOnly;
+    }
+
+    private static void writeFileStart(PrintWriter writer, SampleSaveConfiguration saveConfig) {
+        if (saveConfig.saveAsXml()) {
+            writer.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+            writer.print("\n");
+            String pi = saveConfig.getXmlPi();
+            if (pi.length() > 0) {
+                writer.println(pi);
+            }
+
+            writer.print("<testResults version=\"");
+            writer.print(SaveService.getVERSION());
+            writer.print("\">");
+            writer.print("\n");
+        } else if (saveConfig.saveFieldNames()) {
+            writer.println(CSVSaveService.printableFieldNamesToString(saveConfig));
+        }
+
+    }
+
+    private static void writeFileEnd(PrintWriter pw, SampleSaveConfiguration saveConfig) {
+        if (saveConfig.saveAsXml()) {
+            pw.print("\n");
+            pw.print("</testResults>");
+            pw.print("\n");
+        }
+
+    }
+
+    private static PrintWriter getFileWriter(String pFilename, SampleSaveConfiguration saveConfig) throws IOException {
+        if (pFilename != null && pFilename.length() != 0) {
+            if (log.isDebugEnabled()) {
+                log.debug("Getting file: {} in thread {}", pFilename, Thread.currentThread().getName());
+            }
+
+            String filename = FileServer.resolveBaseRelativeName(pFilename);
+            filename = (new File(filename)).getCanonicalPath();
+            ResultCollectorUtil.FileEntry fe = (ResultCollectorUtil.FileEntry) files.get(filename);
+            PrintWriter writer = null;
+            boolean trimmed = true;
+            if (fe == null) {
+                if (saveConfig.saveAsXml()) {
+                    trimmed = trimLastLine(filename);
+                } else {
+                    trimmed = (new File(filename)).exists();
+                }
+
+                File pdir = (new File(filename)).getParentFile();
+                if (pdir != null) {
+                    if (pdir.mkdirs() && log.isInfoEnabled()) {
+                        log.info("Folder at {} was created", pdir.getAbsolutePath());
+                    }
+
+                    if (!pdir.exists()) {
+                        log.warn("Error creating directories for {}", pdir);
+                    }
+                }
+
+                writer = new PrintWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(filename, trimmed)), SaveService.getFileEncoding(StandardCharsets.UTF_8.name())), SAVING_AUTOFLUSH);
+                if (log.isDebugEnabled()) {
+                    log.debug("Opened file: {} in thread {}", filename, Thread.currentThread().getName());
+                }
+
+                files.put(filename, new ResultCollectorUtil.FileEntry(writer, saveConfig));
+            } else {
+                writer = fe.pw;
+            }
+
+            if (!trimmed) {
+                log.debug("Writing header to file: {}", filename);
+                writeFileStart(writer, saveConfig);
+            }
+
+            return writer;
+        } else {
+            return null;
+        }
+    }
+
+    private static boolean trimLastLine(String filename) {
+        try {
+            RandomAccessFile raf = new RandomAccessFile(filename, "rw");
+            Throwable var2 = null;
+
+            boolean var5;
+            try {
+                long len = raf.length();
+                if (len >= (long) MIN_XML_FILE_LEN) {
+                    raf.seek(len - (long) "</testResults>".length() - 10L);
+                    long pos = raf.getFilePointer();
+
+                    int end;
+                    String line;
+                    for (end = 0; (line = raf.readLine()) != null; pos = raf.getFilePointer()) {
+                        end = line.indexOf("</testResults>");
+                        if (end >= 0) {
+                            break;
+                        }
+                    }
+
+                    if (line == null) {
+                        log.warn("Unexpected EOF trying to find XML end marker in {}", filename);
+                        boolean var9 = false;
+                        return var9;
+                    }
+
+                    raf.setLength(pos + (long) end);
+                    return true;
+                }
+
+                var5 = false;
+            } catch (Throwable var22) {
+                var2 = var22;
+                throw var22;
+            } finally {
+                if (raf != null) {
+                    if (var2 != null) {
+                        try {
+                            raf.close();
+                        } catch (Throwable var21) {
+                            var2.addSuppressed(var21);
+                        }
+                    } else {
+                        raf.close();
+                    }
+                }
+
+            }
+
+            return var5;
+        } catch (FileNotFoundException var24) {
+            return false;
+        } catch (IOException var25) {
+            if (log.isWarnEnabled()) {
+                log.warn("Error trying to find XML terminator. {}", var25.toString());
+            }
+
+            return false;
+        }
+    }
+
+    private static void finalizeFileOutput() {
+        Iterator var0 = files.entrySet().iterator();
+
+        while (var0.hasNext()) {
+            Entry<String, ResultCollectorUtil.FileEntry> me = (Entry) var0.next();
+            String key = (String) me.getKey();
+            ResultCollectorUtil.FileEntry value = (ResultCollectorUtil.FileEntry) me.getValue();
+
+            try {
+                log.debug("Closing: {}", key);
+                writeFileEnd(value.pw, value.config);
+                value.pw.close();
+                if (value.pw.checkError()) {
+                    log.warn("Problem detected during use of {}", key);
+                }
+            } catch (Exception var5) {
+                log.error("Error closing file {}", key, var5);
+            }
+        }
+
+        files.clear();
+    }
+
+    @Override
     public Object clone() {
-         ResultCollectorUtil clone = (ResultCollectorUtil)super.clone();
-        clone.setSaveConfig((SampleSaveConfiguration)clone.getSaveConfig().clone());
+        ResultCollectorUtil clone = (ResultCollectorUtil) super.clone();
+        clone.setSaveConfig((SampleSaveConfiguration) clone.getSaveConfig().clone());
         clone.summariser = this.summariser;
         return clone;
     }
@@ -101,12 +249,22 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
         return this.getPropertyAsString("filename");
     }
 
+    public void setFilename(String f) {
+        if (!this.inTest) {
+            this.setFilenameProperty(f);
+        }
+    }
+
     public boolean isErrorLogging() {
         return this.getPropertyAsBoolean("ResultCollector.error_logging");
     }
 
     public final void setErrorLogging(boolean errorLogging) {
         this.setProperty(new BooleanProperty("ResultCollector.error_logging", errorLogging));
+    }
+
+    public boolean isSuccessOnlyLogging() {
+        return this.getPropertyAsBoolean("ResultCollector.success_only_logging", false);
     }
 
     public final void setSuccessOnlyLogging(boolean value) {
@@ -118,29 +276,16 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
 
     }
 
-    public boolean isSuccessOnlyLogging() {
-        return this.getPropertyAsBoolean("ResultCollector.success_only_logging", false);
-    }
-
     public boolean isSampleWanted(boolean success) {
         boolean errorOnly = this.isErrorLogging();
         boolean successOnly = this.isSuccessOnlyLogging();
         return isSampleWanted(success, errorOnly, successOnly);
     }
 
-    public static boolean isSampleWanted(boolean success, boolean errorOnly, boolean successOnly) {
-        return !errorOnly && !successOnly || success && successOnly || !success && errorOnly;
-    }
-
-    public void setFilename(String f) {
-        if (!this.inTest) {
-            this.setFilenameProperty(f);
-        }
-    }
     @Override
     public void testEnded(String host) {
         Object var2 = LOCK;
-        synchronized(LOCK) {
+        synchronized (LOCK) {
             --instanceCount;
             if (instanceCount <= 0) {
                 if (shutdownHook != null) {
@@ -160,10 +305,11 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
         }
 
     }
+
     @Override
     public void testStarted(String host) {
         Object var2 = LOCK;
-        synchronized(LOCK) {
+        synchronized (LOCK) {
             if (instanceCount == 0) {
                 shutdownHook = new Thread(new ResultCollectorUtil.ShutdownHook());
                 Runtime.getRuntime().addShutdownHook(shutdownHook);
@@ -194,10 +340,12 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
         }
 
     }
+
     @Override
     public void testEnded() {
         this.testEnded("*local*");
     }
+
     @Override
     public void testStarted() {
         this.testStarted("*local*");
@@ -327,158 +475,21 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
         }
     }
 
-    private static void writeFileStart(PrintWriter writer, SampleSaveConfiguration saveConfig) {
-        if (saveConfig.saveAsXml()) {
-            writer.print("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-            writer.print("\n");
-            String pi = saveConfig.getXmlPi();
-            if (pi.length() > 0) {
-                writer.println(pi);
-            }
-
-            writer.print("<testResults version=\"");
-            writer.print(SaveService.getVERSION());
-            writer.print("\">");
-            writer.print("\n");
-        } else if (saveConfig.saveFieldNames()) {
-            writer.println(CSVSaveService.printableFieldNamesToString(saveConfig));
-        }
-
-    }
-
-    private static void writeFileEnd(PrintWriter pw, SampleSaveConfiguration saveConfig) {
-        if (saveConfig.saveAsXml()) {
-            pw.print("\n");
-            pw.print("</testResults>");
-            pw.print("\n");
-        }
-
-    }
-
-    private static PrintWriter getFileWriter(String pFilename, SampleSaveConfiguration saveConfig) throws IOException {
-        if (pFilename != null && pFilename.length() != 0) {
-            if (log.isDebugEnabled()) {
-                log.debug("Getting file: {} in thread {}", pFilename, Thread.currentThread().getName());
-            }
-
-            String filename = FileServer.resolveBaseRelativeName(pFilename);
-            filename = (new File(filename)).getCanonicalPath();
-            ResultCollectorUtil.FileEntry fe = (ResultCollectorUtil.FileEntry)files.get(filename);
-            PrintWriter writer = null;
-            boolean trimmed = true;
-            if (fe == null) {
-                if (saveConfig.saveAsXml()) {
-                    trimmed = trimLastLine(filename);
-                } else {
-                    trimmed = (new File(filename)).exists();
-                }
-
-                File pdir = (new File(filename)).getParentFile();
-                if (pdir != null) {
-                    if (pdir.mkdirs() && log.isInfoEnabled()) {
-                        log.info("Folder at {} was created", pdir.getAbsolutePath());
-                    }
-
-                    if (!pdir.exists()) {
-                        log.warn("Error creating directories for {}", pdir);
-                    }
-                }
-
-                writer = new PrintWriter(new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(filename, trimmed)), SaveService.getFileEncoding(StandardCharsets.UTF_8.name())), SAVING_AUTOFLUSH);
-                if (log.isDebugEnabled()) {
-                    log.debug("Opened file: {} in thread {}", filename, Thread.currentThread().getName());
-                }
-
-                files.put(filename, new ResultCollectorUtil.FileEntry(writer, saveConfig));
-            } else {
-                writer = fe.pw;
-            }
-
-            if (!trimmed) {
-                log.debug("Writing header to file: {}", filename);
-                writeFileStart(writer, saveConfig);
-            }
-
-            return writer;
-        } else {
-            return null;
-        }
-    }
-
-    private static boolean trimLastLine(String filename) {
-        try {
-            RandomAccessFile raf = new RandomAccessFile(filename, "rw");
-            Throwable var2 = null;
-
-            boolean var5;
-            try {
-                long len = raf.length();
-                if (len >= (long)MIN_XML_FILE_LEN) {
-                    raf.seek(len - (long)"</testResults>".length() - 10L);
-                    long pos = raf.getFilePointer();
-
-                    int end;
-                    String line;
-                    for(end = 0; (line = raf.readLine()) != null; pos = raf.getFilePointer()) {
-                        end = line.indexOf("</testResults>");
-                        if (end >= 0) {
-                            break;
-                        }
-                    }
-
-                    if (line == null) {
-                        log.warn("Unexpected EOF trying to find XML end marker in {}", filename);
-                        boolean var9 = false;
-                        return var9;
-                    }
-
-                    raf.setLength(pos + (long)end);
-                    return true;
-                }
-
-                var5 = false;
-            } catch (Throwable var22) {
-                var2 = var22;
-                throw var22;
-            } finally {
-                if (raf != null) {
-                    if (var2 != null) {
-                        try {
-                            raf.close();
-                        } catch (Throwable var21) {
-                            var2.addSuppressed(var21);
-                        }
-                    } else {
-                        raf.close();
-                    }
-                }
-
-            }
-
-            return var5;
-        } catch (FileNotFoundException var24) {
-            return false;
-        } catch (IOException var25) {
-            if (log.isWarnEnabled()) {
-                log.warn("Error trying to find XML terminator. {}", var25.toString());
-            }
-
-            return false;
-        }
-    }
     @Override
     public void sampleStarted(SampleEvent e) {
     }
+
     @Override
     public void sampleStopped(SampleEvent e) {
     }
+
     @Override
     public void sampleOccurred(SampleEvent event) {
 
         //获取响应数据
         SampleResult result = event.getResult();
-        System.out.println("ResponseCode==" + result.getResponseCode());
-        System.out.println("ResponseData==" + result.getResponseDataAsString());
+//        System.out.println("ResponseCode==" + result.getResponseCode());
+//        System.out.println("ResponseData==" + result.getResponseDataAsString());
 
         if (this.isSampleWanted(result.isSuccessful())) {
             this.sendToVisualizer(result);
@@ -524,32 +535,9 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
 
     }
 
-    private static void finalizeFileOutput() {
-        Iterator var0 = files.entrySet().iterator();
-
-        while(var0.hasNext()) {
-            Entry<String, ResultCollectorUtil.FileEntry> me = (Entry)var0.next();
-            String key = (String)me.getKey();
-            ResultCollectorUtil.FileEntry value = (ResultCollectorUtil.FileEntry)me.getValue();
-
-            try {
-                log.debug("Closing: {}", key);
-                writeFileEnd(value.pw, value.config);
-                value.pw.close();
-                if (value.pw.checkError()) {
-                    log.warn("Problem detected during use of {}", key);
-                }
-            } catch (Exception var5) {
-                log.error("Error closing file {}", key, var5);
-            }
-        }
-
-        files.clear();
-    }
-
     public SampleSaveConfiguration getSaveConfig() {
         try {
-            return (SampleSaveConfiguration)this.getProperty("saveConfig").getObjectValue();
+            return (SampleSaveConfiguration) this.getProperty("saveConfig").getObjectValue();
         } catch (ClassCastException var2) {
             this.setSaveConfig(new SampleSaveConfiguration());
             return this.getSaveConfig();
@@ -559,6 +547,7 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
     public void setSaveConfig(SampleSaveConfiguration saveConfig) {
         this.getProperty("saveConfig").setObjectValue(saveConfig);
     }
+
     @Override
     public void clearData() {
     }
@@ -570,7 +559,7 @@ public class ResultCollectorUtil extends AbstractListenerElement implements Samp
         @Override
         public void run() {
             ResultCollectorUtil.log.info("Shutdown hook started");
-            synchronized(ResultCollectorUtil.LOCK) {
+            synchronized (ResultCollectorUtil.LOCK) {
                 ResultCollectorUtil.finalizeFileOutput();
             }
 
